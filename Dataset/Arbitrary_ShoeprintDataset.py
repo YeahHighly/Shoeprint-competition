@@ -7,17 +7,18 @@ import torch as t
 from torch.autograd import Variable
 import numpy as np
 import cv2 as cv
+import random
 
 
 class Arbitrary_ShoeprintDataset(data.Dataset):
 
-    def __init__(self, root, fold=0, pattern=True, formats=True, types=False, thickness=6):
+    def __init__(self, root, fold=0, pattern=True, formats=False, types=False, thickness=6):
 
         # 参数注释:
         # root: 数据集根目录
         # fold: 交叉验证批次,总共5[0-4]
         # pattern: 训练集/测试集 True为训练集
-        # formats: 是否为10-80岁区间数据 True为10-80区间内数据
+        # formats: 是否为11粗类别数据 False为11粗类别数据，True的取值为全年龄细分类，具体取值区间请调整阈值
         # types: 灰度/RGB原图 True为灰度图
 
         self.size = [384, 768]     # 定义resize大小，可以改成变量
@@ -27,6 +28,8 @@ class Arbitrary_ShoeprintDataset(data.Dataset):
         self.fold = fold    # 见上方注释
         self.types = types  # 见上方注释
         self.thickness = thickness
+        self.age_upper = 0
+        self.age_lower = 120
         if self.types:  # 判断是灰度图还是RGB图
             self.transforms_data = T.Compose([
                 T.Resize(self.size),    # 裁剪
@@ -73,41 +76,42 @@ class Arbitrary_ShoeprintDataset(data.Dataset):
 
         self.data_path = []   # 创建data地址数组
         self.label_path = []    # 创建label数组
+        self.full_list = []
 
         for i in range(len(os.listdir(self.images_root+'Label/'))):
             # print(self.images_root+'Label/'+os.listdir(self.images_root+'Label/')[i])
             read_txt = open(self.images_root+'Label/'+os.listdir(self.images_root+'Label/')[i], 'r').readlines()
             for j in read_txt:
                 if self.types:
-                    self.data_path.append(self.images_root+'Datas/' + j.split(' ')[0])
+                    duct_tape = self.images_root+'Datas/' + j.split(' ')[0]
                 else:
-                    self.data_path.append(self.images_root + 'Data/' + j.split(' ')[0])
-                # 这里对标签进行了修改，进行11年龄段预测,如果要预测全年龄请切换一下
-                self.label_path.append(str(i))
-                # 全年龄预测
-                # self.label_path.append(j.split(' ')[1][:-1])
-                # 部分区间，请在下方写一个过滤
+                    duct_tape = self.images_root + 'Data/' + j.split(' ')[0]
+                if self.formats:
+                    age = int(j.split(' ')[1][:-1])
+                    if self.age_upper >= age >= self.age_lower:
+                        self.full_list.append(duct_tape + ' ' + str(age))
+                else:
+                    self.full_list.append(duct_tape + ' ' + str(i))
 
-                # print(self.images_root+'Data/' + j.split(' ')[1][:-1])
-        self.data_path_cut = self.div_list(self.data_path, 5)
-        self.label_path_cut = self.div_list(self.label_path, 5)
-        self.data_path = []  # 创建data地址数组
-        self.label_path = []  # 创建label数组
-
+        random.shuffle(self.full_list)
+        # print(len(self.full_list))
+        #
+        # # print(self.images_root+'Data/' + j.split(' ')[1][:-1])
+        self.data_path_cut = self.div_list(self.full_list, 5)
+        # # print(len(self.data_path_cut))
+        #
         if self.Pattern:
             for k in range(5):
                 if k != self.fold:
                     for x in self.data_path_cut[k]:
-                        self.data_path.append(x)
-                    for x in self.label_path_cut[k]:
-                        self.label_path.append(x)
+                        self.data_path.append(x.split(' ')[0])
+                        self.label_path.append(x.split(' ')[1])
         else:
             for k in range(5):
                 if k == self.fold:
                     for x in self.data_path_cut[k]:
-                        self.data_path.append(x)
-                    for x in self.label_path_cut[k]:
-                        self.label_path.append(x)
+                        self.data_path.append(x.split(' ')[0])
+                        self.label_path.append(x.split(' ')[1])
 
     def __getitem__(self, index):   # 这个函数负责根据所以去读取数据，index是程序调用的，当然你也可以自己去调用看看写的对不对
         '''
@@ -140,6 +144,6 @@ class Arbitrary_ShoeprintDataset(data.Dataset):
         return datas, label 							# 后面就返回就行了，返回data和label
 
     def __len__(self):
-        # return len(self.data_path)                  # 这个函数是告诉程序数据集究竟有多大，可以直接写个具体的值，不过写超了会报错，out of range!
-        return 1000
+        return len(self.data_path)                  # 这个函数是告诉程序数据集究竟有多大，可以直接写个具体的值，不过写超了会报错，out of range!
+        # return 1000
 
