@@ -12,7 +12,7 @@ import random
 
 class Arbitrary_ShoeprintDataset(data.Dataset):
 
-    def __init__(self, root, fold=0, pattern=True, formats=False, types=False, thickness=6):
+    def __init__(self, root, fold=0, pattern=True, formats=True, types=False, thickness=6):
 
         # 参数注释:
         # root: 数据集根目录
@@ -28,8 +28,8 @@ class Arbitrary_ShoeprintDataset(data.Dataset):
         self.fold = fold    # 见上方注释
         self.types = types  # 见上方注释
         self.thickness = thickness
-        self.age_upper = 0
-        self.age_lower = 120
+        self.age_upper = 40
+        self.age_lower = 0
         if self.types:  # 判断是灰度图还是RGB图
             self.transforms_data = T.Compose([
                 T.Resize(self.size),    # 裁剪
@@ -94,7 +94,6 @@ class Arbitrary_ShoeprintDataset(data.Dataset):
                     self.full_list.append(duct_tape + ' ' + str(i))
 
         random.shuffle(self.full_list)
-        # print(len(self.full_list))
         #
         # # print(self.images_root+'Data/' + j.split(' ')[1][:-1])
         self.data_path_cut = self.div_list(self.full_list, 5)
@@ -113,12 +112,14 @@ class Arbitrary_ShoeprintDataset(data.Dataset):
                         self.data_path.append(x.split(' ')[0])
                         self.label_path.append(x.split(' ')[1])
 
+        # print(len(self.data_path), len(self.label_path))
+
     def __getitem__(self, index):   # 这个函数负责根据所以去读取数据，index是程序调用的，当然你也可以自己去调用看看写的对不对
         '''
         return the data of one image
         '''
-        data_path = self.data_path[index]			# 根据出入的index去读取第index-1个图像的地址
-        label = self.label_path[index]				# 根据出入的index去读取第index-1个数据label
+        data_path = self.data_path[index]   # 根据出入的index去读取第index-1个图像的地址
+        label = self.label_path[index]		# 根据出入的index去读取第index-1个数据label
 
         if self.types:
             datas = t.zeros(self.thickness, self.size[0], self.size[1])
