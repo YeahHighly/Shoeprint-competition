@@ -29,7 +29,7 @@ class Arbitrary_ShoeprintDataset(data.Dataset):
         self.types = types  # 见上方注释
         self.thickness = thickness
         self.age_upper = 40
-        self.age_lower = 0
+        self.age_lower = 20
         if self.types:  # 判断是灰度图还是RGB图
             self.transforms_data = T.Compose([
                 T.Resize(self.size),    # 裁剪
@@ -89,7 +89,7 @@ class Arbitrary_ShoeprintDataset(data.Dataset):
                 if self.formats:
                     age = int(j.split(' ')[1][:-1])
                     if self.age_upper >= age >= self.age_lower:
-                        self.full_list.append(duct_tape + ' ' + str(age))
+                        self.full_list.append(duct_tape + ' ' + str(age-self.age_lower))
                 else:
                     self.full_list.append(duct_tape + ' ' + str(i))
 
