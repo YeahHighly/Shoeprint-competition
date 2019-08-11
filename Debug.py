@@ -11,7 +11,9 @@ import torchvision.models as models
 from torch.optim import SGD, Adam, lr_scheduler
 
 from Dataset import ShoeprintDataset
+from Dataset import Arbitrary_ShoeprintDataset
 from Network import se_resnet20
+from Network import ResNet_CBAM
 from Util import Criterion
 
 
@@ -27,14 +29,14 @@ if __name__ == '__main__':
     save_root = '/home/hly/Code/Shoeprint-competition/Save/'    # 模型保存地址，这个大家要改一下，写自己的路径
     dir_exit(save_root)     # 若模型存储地址不存在就创建
     # 初始化数据集，参数内容请参考Dataset内的ShoeprintDataset
-    train_data = ShoeprintDataset(root=data_root, fold=0, pattern=True,  formats=True, types=True)
-    val_data = ShoeprintDataset(root=data_root, fold=0, pattern=False,  formats=True, types=True)
-    batch_size_train = 5   # 训练集batch_size
-    batch_size_val = 5  # 验证集batch_size
-    num_workers = 8     # 数据集加载线程数
+    train_data = Arbitrary_ShoeprintDataset(root=data_root, fold=0, pattern=True,  formats=True, types=True)
+    val_data = Arbitrary_ShoeprintDataset(root=data_root, fold=0, pattern=False,  formats=True, types=True)
+    batch_size_train = 100   # 训练集batch_size
+    batch_size_val = 50  # 验证集batch_size
+    num_workers = 10     # 数据集加载线程数
     # criterion = nn.CrossEntropyLoss()       # 定义损失函数
     criterion = Criterion(cumulative=2, c=0.5, alpha=1)
-    learning_rate = 1e-4    # lr值
+    learning_rate = 1e-5    # lr值
     num_epoches = 20    # 训练批次
 
     # 创建训练集data-loader
@@ -46,43 +48,51 @@ if __name__ == '__main__':
     print('val dataset len: {}'.format(len(val_dataloader.dataset)))
 
     # 检查输出数据格式
-    # for batch_datas,batch_labels in train_dataloader:
+    # for batch_datas, batch_labels in train_dataloader:
+    #     # print(batch_datas, batch_labels)
     #     print(batch_datas.size(), batch_labels.size())
-    #     print(batch_datas.type(), batch_labels.type())
+    #     # for i in range(30):
+    #     #     print(batch_datas[0][i])
+    #     # print(batch_datas.type(), batch_labels.type())
+    #     # print(batch_labels)
     #     break
 
-    # Network创建
+    model = ResNet_CBAM(input_dim=6, layers=[3, 4, 6, 3], num_classes=11)
 
-    # SENet示例
-    model = se_resnet20(num_classes=71, reduction=16)
-    # print(model)
 
-    # ResNet34示例
-    # model = models.resnet34(pretrained=True)
-    # model.conv1 = nn.Conv2d(1, 64, 7, 2, 3)
-    # model.fc = nn.Linear(512, 71)
-
-    # ResNet101示例
-    # model = models.resnet101(pretrained=True)
-    # model.conv1 = nn.Conv2d(1, 64, 7, 2, 3)
-    # model.fc = nn.Linear(2048, 71)
-
-    # 是否可使用GPU
+    # # Network创建
+    #
+    # # SENet示例
+    # model = se_resnet20(num_classes=71, reduction=16)
+    # # print(model)
+    #
+    # # ResNet34示例
+    # # model = models.resnet34(pretrained=True)
+    # # model.conv1 = nn.Conv2d(1, 64, 7, 2, 3)
+    # # model.fc = nn.Linear(512, 71)
+    #
+    # # ResNet101示例
+    # # model = models.resnet101(pretrained=True)
+    # # model.conv1 = nn.Conv2d(1, 64, 7, 2, 3)
+    # # model.fc = nn.Linear(2048, 71)
+    #
+    # # 是否可使用GPU
     use_gpu = torch.cuda.is_available()
-
-    # 多卡并行模型初始化
+    #
+    # # 多卡并行模型初始化
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
-        model = nn.DataParallel(model, device_ids=[0]).cuda()      # 修改这里去设置那几张卡
-
-    # 模型和损失函数都放上cuda
+        model = nn.DataParallel(model, device_ids=[0, 1, 2, 3, 4]).cuda()      # 修改这里去设置那几张卡
+    #
+    # # 模型和损失函数都放上cuda
     if torch.cuda.is_available():
         model.cuda()
         criterion.cuda()
 
-    # 测试网络格式
+    # # 测试网络格式
     # print(model)
-    # test_data = torch.randn((2, 3, 384, 768)).cuda()
+    # optimizer = optim.Adam(model.parameters(), learning_rate, (0.9, 0.999), eps=1e-08, weight_decay=1e-4)
+    # test_data = torch.randn((2, 32, 384, 768)).cuda()
     # print(format(test_data.size()))
     # test_out = model(test_data).cuda()
     # # test_out = torch.FloatTensor([[3.1, .4, .9, 0.4], [0, 0, 0.7, 0.3]]).cuda()
@@ -94,7 +104,7 @@ if __name__ == '__main__':
     # optimizer.zero_grad()
     # loss.backward()
     # optimizer.step()
-
+    #
     # 优化器设置，可根据自己的要求去换，本分调用了自定义优化策略lr_scheduler去进行lr的衰减
     optimizer = optim.Adam(model.parameters(), learning_rate, (0.9, 0.999), eps=1e-08, weight_decay=1e-4)
     lambda1 = lambda epoch: pow((1 - ((epoch - 1) / num_epoches)), 0.999)

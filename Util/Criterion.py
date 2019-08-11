@@ -7,6 +7,7 @@ from torch.autograd import Variable
 
 class Criterion(nn.Module):
     def __init__(self, cumulative=2, c=0.5, alpha=1, lambda_list=[1.0, 0.2, 0.001]):
+        # 1.0 0.2 0.001
         super(Criterion, self).__init__()
         self.Cumulative = cumulative
         self.ReLU = nn.ReLU(inplace=True)
@@ -59,10 +60,12 @@ class Criterion(nn.Module):
 
     # 总loss,请在此处天马行空，例子是MCS，交叉熵，MSE的组合形势，可以自己去修改
     def forward(self, out, label):
-        loss_list = torch.Tensor([self.one_reduce_flb_mcs_loss(out, label), self.cross_entropy_loss(out, label),
-                                  self.mcs_loss(out, label)]).requires_grad_(requires_grad=True)
+        # loss_list = torch.Tensor([self.one_reduce_flb_mcs_loss(out, label), self.cross_entropy_loss(out, label),
+        #                           self.mcs_loss(out, label)]).requires_grad_(requires_grad=True)
+
         # loss_list包括了上述的三种loss，与相应的lambda值进行对位相乘
-        total_loss = loss_list.mul(self.lambda_list).sum()
+        # total_loss = loss_list.mul(self.lambda_list).sum()
+        total_loss = self.cross_entropy_loss(out, label)
         return total_loss
 
 
